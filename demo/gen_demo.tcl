@@ -30,20 +30,20 @@ set proj_dir [get_property directory [current_project]]
 # set project properties
 set obj [current_project]
 set_property -name "default_lib" -value "xil_defaultlib" -objects $obj
-set_property -name "dsa.accelerator_binary_content" -value "bitstream" -objects $obj
-set_property -name "dsa.accelerator_binary_format" -value "xclbin2" -objects $obj
-set_property -name "dsa.description" -value "Vivado generated DSA" -objects $obj
-set_property -name "dsa.dr_bd_base_address" -value "0" -objects $obj
-set_property -name "dsa.emu_dir" -value "emu" -objects $obj
-set_property -name "dsa.flash_interface_type" -value "bpix16" -objects $obj
-set_property -name "dsa.flash_offset_address" -value "0" -objects $obj
-set_property -name "dsa.flash_size" -value "1024" -objects $obj
-set_property -name "dsa.host_architecture" -value "x86_64" -objects $obj
-set_property -name "dsa.host_interface" -value "pcie" -objects $obj
-set_property -name "dsa.platform_state" -value "pre_synth" -objects $obj
-set_property -name "dsa.uses_pr" -value "1" -objects $obj
-set_property -name "dsa.vendor" -value "xilinx" -objects $obj
-set_property -name "dsa.version" -value "0.0" -objects $obj
+# set_property -name "dsa.accelerator_binary_content" -value "bitstream" -objects $obj
+# set_property -name "dsa.accelerator_binary_format" -value "xclbin2" -objects $obj
+# set_property -name "dsa.description" -value "Vivado generated DSA" -objects $obj
+# set_property -name "dsa.dr_bd_base_address" -value "0" -objects $obj
+# set_property -name "dsa.emu_dir" -value "emu" -objects $obj
+# set_property -name "dsa.flash_interface_type" -value "bpix16" -objects $obj
+# set_property -name "dsa.flash_offset_address" -value "0" -objects $obj
+# set_property -name "dsa.flash_size" -value "1024" -objects $obj
+# set_property -name "dsa.host_architecture" -value "x86_64" -objects $obj
+# set_property -name "dsa.host_interface" -value "pcie" -objects $obj
+# set_property -name "dsa.platform_state" -value "pre_synth" -objects $obj
+# set_property -name "dsa.uses_pr" -value "1" -objects $obj
+# set_property -name "dsa.vendor" -value "xilinx" -objects $obj
+# set_property -name "dsa.version" -value "0.0" -objects $obj
 set_property -name "enable_vhdl_2008" -value "1" -objects $obj
 set_property -name "ip_cache_permissions" -value "read write" -objects $obj
 set_property -name "ip_output_repo" -value "$proj_dir/${_xil_proj_name_}.cache/ip" -objects $obj
@@ -109,7 +109,7 @@ if {[string first "ibex" $core_dir] != -1} {
     } {
         lappend src_list "$core_dir/rtl/$file"
     }
-    lappend src_list "$core_dir/bhv/cv32e40x_sim_clock_gate.sv"
+    lappend src_list "$core_dir/../demo/rtl/cv32e40x_clock_gate_xilinx.sv"
 }
 add_files -fileset $obj -norecurse -scan_for_includes $src_list
 

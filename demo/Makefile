@@ -10,7 +10,7 @@
 DEMO_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # tcl script
-GEN_DEMO_TCL := gen_demo.tcl
+GEN_DEMO_TCL := gen_demo_ps.tcl
 GET_PERF_TCL := get_max_clk.tcl
 
 # select the core to use as main processor (defaults to Ibex)
@@ -39,6 +39,12 @@ ifeq ($(BOARD), nexysa7)
   PART     ?= xc7a100tcsg324-1
   DIFF_CLK ?= 0
   CLK_PER  ?= 10.0
+else
+ifeq ($(BOARD), pynqz2)
+  PART     ?= xc7z020clg400-1
+  DIFF_CLK ?= 0
+  CLK_PER  ?= 20.0
+endif
 endif
 endif
 endif

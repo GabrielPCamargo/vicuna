@@ -478,7 +478,11 @@ module vproc_top import vproc_pkg::*; #(
     logic                data_rvalid;
     logic                data_err;
     logic [VMEM_W  -1:0] data_rdata;
-    logic                sdata_waiting, vdata_waiting;
+    logic                vdata_waiting;
+    // Numero de transacoes escalares pendentes. A LSU do CV32E40X pode ter ate 2
+    // transacoes pendentes; com memoria de latencia variavel (ex.: DDR via AXI),
+    // um unico bit "waiting" era zerado na primeira resposta e a segunda era descartada.
+    logic [2:0]          sdata_pending;
     logic [31:0]         sdata_wait_addr;
     logic [X_ID_WIDTH-1:0] vdata_wait_id;
     assign sdata_hold = ~USE_XIF_MEM & (vdata_req | vect_pending_store | (vect_pending_load & sdata_we));
@@ -502,17 +506,20 @@ module vproc_top import vproc_pkg::*; #(
     assign vdata_gnt = data_gnt & vdata_req;
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (~rst_ni) begin
-            sdata_waiting   <= 1'b0;
+            sdata_pending   <= '0;
             vdata_waiting   <= 1'b0;
             sdata_wait_addr <= '0;
             vdata_wait_id   <= '0;
         end else begin
+            case ({sdata_gnt, sdata_rvalid})
+                2'b10:   sdata_pending <= sdata_pending + 3'd1;
+                2'b01:   sdata_pending <= sdata_pending - 3'd1;
+                default: ;  // 00 ou 11: numero de pendentes nao muda
+            endcase
+            // Obs.: o endereco so e usado para selecionar a palavra quando VMEM_W > 32;
+            // com VMEM_W == 32 (caso do CV32E40X com USE_XIF_MEM) ele nao tem efeito.
             if (sdata_gnt) begin
-                sdata_waiting   <= 1'b1;
                 sdata_wait_addr <= sdata_addr;
-            end
-            else if (sdata_rvalid) begin
-                sdata_waiting <= 1'b0;
             end
             if (vdata_gnt) begin
                 vdata_waiting <= 1'b1;
@@ -523,7 +530,7 @@ module vproc_top import vproc_pkg::*; #(
             end
         end
     end
-    assign sdata_rvalid = sdata_waiting & data_rvalid;
+    assign sdata_rvalid = (sdata_pending != '0) & data_rvalid;
     assign vdata_rvalid = vdata_waiting & data_rvalid;
     assign sdata_err    = data_err;
     assign vdata_err    = data_err;

@@ -6,7 +6,7 @@
 // Simple single-port RAM with 32-bit words and byte enable
 module ram32
     #(
-        parameter SIZE = 16384, // 64 K
+        parameter SIZE = 32768, // 64 K
         parameter INIT_FILE
     )
     (
@@ -24,8 +24,13 @@ module ram32
 
     localparam int ADDR_W = $clog2(SIZE);
 
-    logic [31:0] mem[SIZE];
-    logic [ADDR_W-1:0] mem_addr;
+    // 1. Força o Vivado a NÃO usar a conexão de cascata dedicada no silício (que tem o bug), 
+    // instruindo-o a utilizar Multiplexadores em blocos paralelos.
+    (* ram_style = "block", cascade_height = 0 *) logic [31:0] mem[SIZE];
+    
+    // 2. Impede o Vivado de "clonar" a trilha de endereço durante a síntese.
+    (* dont_touch = "yes" *) logic [ADDR_W-1:0] mem_addr;
+    
     assign mem_addr = addr_i[ADDR_W-1+2:2];
 
     always @(posedge clk_i) begin

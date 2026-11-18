@@ -7,9 +7,9 @@ module demo_top #(
         parameter              RAM_FPATH      = "",
         parameter int unsigned RAM_SIZE       = 262144,
         parameter bit          DIFF_CLK       = 1'b0,
-        parameter real         SYSCLK_PER     = 0.0,
-        parameter int unsigned PLL_MUL        = 10,
-        parameter int unsigned PLL_DIV        = 20,
+        parameter int unsigned FREQ_MHZ       = 125,
+        parameter int unsigned PLL_MUL        = 8,
+        parameter int unsigned PLL_DIV        = 40,
         parameter int unsigned UART_BAUD_RATE = 115200
     )
     (
@@ -24,7 +24,10 @@ module demo_top #(
 
     localparam logic [31:0] MEM_START = 32'h00000000;
     localparam logic [31:0] MEM_MASK  = RAM_SIZE-1;
-
+    
+    // Substitua a linha antiga por essa:
+// Calcula a frequência real do clock que sai da PLL e alimenta o sistema
+    localparam int unsigned CLK_FREQ = (FREQ_MHZ * 1_000_000 * PLL_MUL) / PLL_DIV;
 
     logic sys_clk;
     generate
@@ -39,11 +42,21 @@ module demo_top #(
         end
     endgenerate
 
-    localparam int unsigned CLK_FREQ = (1_000_000_000.0 / SYSCLK_PER) * PLL_MUL / PLL_DIV;
+    logic clk_raw, pll_lock;
+    
+    // --- CORREÇÃO DO TIMING LOOP PARA A ZYNQ ---
+    logic pll_fb_out, pll_fb_in;
+    
+    localparam real CLKIN_PERIOD_NS = 1000.0 / FREQ_MHZ; // 1000/125 = 8.0 ns
+    
+    // Buffer global dedicado para estabilizar a realimentação do clock
+    BUFG clk_fb_buf (
+        .I ( pll_fb_out ),
+        .O ( pll_fb_in  )
+    );
 
-    logic clk_raw, pll_lock, pll_fb;
     PLLE2_BASE #(
-        .CLKIN1_PERIOD  ( SYSCLK_PER  ),
+        .CLKIN1_PERIOD  ( CLKIN_PERIOD_NS  ),
         .CLKFBOUT_MULT  ( PLL_MUL     ),
         .CLKOUT0_DIVIDE ( PLL_DIV     )
     ) pll_inst (
@@ -57,9 +70,10 @@ module demo_top #(
         .LOCKED         ( pll_lock    ),
         .PWRDWN         ( 1'b0        ),
         .RST            ( ~sys_rst_ni ),
-        .CLKFBOUT       ( pll_fb      ),
-        .CLKFBIN        ( pll_fb      )
+        .CLKFBOUT       ( pll_fb_out  ), // Saída bruta vai para o BUFG
+        .CLKFBIN        ( pll_fb_in   )  // Entrada limpa estabilizada retorna do BUFG
     );
+    
     logic clk;
     BUFG clkbuf (
         .I ( clk_raw ),

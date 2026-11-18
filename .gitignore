@@ -1,3 +1,4 @@
+```ignore
 # Ignore all
 *
 
@@ -26,4 +27,16 @@
 *.fst
 *.fst.hier
 *.gtkw
-vproc_config.sv
+vproc_config*.sv
+
+
+/vivado/
+/vitis/
+/bitstreams/
+/.vscode/
+/__old
+
+/sw/build/
+/sw/physical/
+
+*.jou
