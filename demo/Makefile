@@ -14,7 +14,7 @@ GEN_DEMO_TCL := gen_demo_ps.tcl
 GET_PERF_TCL := get_max_clk.tcl
 
 # select the core to use as main processor (defaults to Ibex)
-CORE     ?= ibex
+CORE     ?= cv32e40x
 CORE_DIR := $(DEMO_DIR)/../$(CORE)/
 
 # board and associated part, constraints file and clock info

@@ -97,22 +97,7 @@ foreach file {
     lappend src_list "$vproc_dir/rtl/$file"
 }
 set main_core ""
-if {[string first "ibex" $core_dir] != -1} {
-    set main_core "MAIN_CORE_IBEX"
-    foreach file {ibex_pkg.sv ibex_top.sv ibex_core.sv ibex_alu.sv ibex_branch_predict.sv
-                  ibex_compressed_decoder.sv ibex_controller.sv ibex_counter.sv
-                  ibex_cs_registers.sv ibex_csr.sv ibex_decoder.sv ibex_dummy_instr.sv
-                  ibex_ex_block.sv ibex_fetch_fifo.sv ibex_icache.sv ibex_id_stage.sv
-                  ibex_if_stage.sv ibex_load_store_unit.sv ibex_lockstep.sv
-                  ibex_multdiv_fast.sv ibex_multdiv_slow.sv ibex_pmp.sv ibex_prefetch_buffer.sv
-                  ibex_register_file_ff.sv ibex_register_file_fpga.sv ibex_wb_stage.sv
-                  ibex_tracer_pkg.sv ibex_tracer.sv} {
-        lappend src_list "$core_dir/rtl/$file"
-    }
-    lappend src_list "$core_dir/syn/rtl/prim_clock_gating.v"
-    lappend src_list "$core_dir/vendor/lowrisc_ip/dv/sv/dv_utils/"
-    lappend src_list "$core_dir/vendor/lowrisc_ip/ip/prim/rtl/"
-} elseif {[string first "cv32e40x" $core_dir] != -1} {
+if {[string first "cv32e40x" $core_dir] != -1} {
     set main_core "MAIN_CORE_CV32E40X"
     lappend src_list "$core_dir/rtl/include/cv32e40x_pkg.sv"
     foreach file {
@@ -134,6 +119,8 @@ if {[string first "ibex" $core_dir] != -1} {
         lappend src_list "$core_dir/rtl/$file"
     }
     lappend src_list "$core_dir/../demo/rtl/cv32e40x_clock_gate_xilinx.sv"
+} else {
+    error "Core nao suportado em '$core_dir' (apenas cv32e40x)"
 }
 add_files -fileset $obj -norecurse -scan_for_includes $src_list
 
