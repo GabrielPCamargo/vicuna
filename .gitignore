@@ -40,3 +40,5 @@ vproc_config*.sv
 /sw/physical/
 
 *.jou
+
+*.cmake

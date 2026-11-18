@@ -2,5 +2,15 @@
 #define RUNTIME_H
 
 #include <stdint.h>
-uint64_t get_mcycle();
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+uint64_t get_mcycle(void);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

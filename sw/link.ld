@@ -81,6 +81,12 @@ SECTIONS
         . = ALIGN(0x1000);
         _user_start = .;
     } >ram
+    
+    /* --- ADICIONE ESTAS 3 LINHAS --- */
+    . = ALIGN(8);
+    _end = .;
+    PROVIDE(_end = .);
+    /* ------------------------------- */
 
 
     .stack ORIGIN(ram) + LENGTH(ram) - STACK_LEN (NOLOAD) : {

@@ -1,4 +1,5 @@
 #include "runtime.h"
+#include <stdio.h>
 
 // Function to read cpu mcycle csr for performance measurements
 uint64_t get_mcycle(){
@@ -12,5 +13,6 @@ uint64_t get_mcycle(){
         asm volatile ("csrr %0,mcycleh"  : "=r" (mcycleh1) );
     }
     cycles = mcycleh1;
+
     return (cycles << 32) | mcyclel;
 }
