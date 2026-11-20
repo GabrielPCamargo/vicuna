@@ -1,6 +1,8 @@
 // demo_top com acesso a DDR do PS (Zynq) via AXI4 master.
 //   0x0000_0000 .. RAM_SIZE-1        : ram32 (codigo, INIT_FILE)
 //   0xFF00_0000 .. 0xFF00_FFFF        : hwregs (UART)       [inalterado]
+//   0xFF00_2000 .. 0xFF00_20FF        : gpio_periph (fora do hwreg_iface)
+//   0xFF00_3000 .. 0xFF00_30FF        : spi_periph (fora do hwreg_iface)
 //   DDR_V_BASE  .. +DDR_SIZE-1        : DDR do PS via AXI   [novo]
 // hwreg_iface e uart_iface continuam em demo_top.sv (nao duplicar).
 // Compile com o define MAIN_CORE_CV32E40X.
@@ -19,7 +21,9 @@ module demo_top_ps #(
         parameter logic [31:0] DDR_V_BASE     = 32'h1000_0000,
         parameter logic [31:0] DDR_SIZE       = 32'h1000_0000,   // potencia de 2
         parameter logic [31:0] DDR_P_BASE     = 32'h1000_0000,
-        parameter int unsigned AXI_ID_W       = 1
+        parameter int unsigned AXI_ID_W       = 1,
+        parameter int unsigned SPI_N_CS       = 2,
+        parameter int unsigned N_GPIO         = 8
     )
     (
         input  logic sys_clk_pi,
@@ -28,6 +32,17 @@ module demo_top_ps #(
 
         input  logic uart_rx_i,
         output logic uart_tx_o,
+
+        // SPI master
+        output logic                spi_sclk_o,
+        output logic                spi_mosi_o,
+        input  logic                spi_miso_i,
+        output logic [SPI_N_CS-1:0] spi_cs_no,
+
+        // GPIO (tri-state fica fora: gpio_oe_o=1 -> pino e saida)
+        input  logic [N_GPIO-1:0]   gpio_in_i,
+        output logic [N_GPIO-1:0]   gpio_out_o,
+        output logic [N_GPIO-1:0]   gpio_oe_o,
 
         // Controle pelo PS (EMIO GPIO): so libera o Vicuna depois que a DDR esta pronta
         input  logic run_i,
@@ -244,8 +259,21 @@ module demo_top_ps #(
     logic [31:0] sram_rdata;
     logic        hwreg_rvalid;
     logic [31:0] hwreg_rdata;
+    logic        spi_rvalid;
+    logic [31:0] spi_rdata;
+    logic        gpio_rvalid;
+    logic [31:0] gpio_rdata;
 
-    assign loc_err = loc_rvalid & (~(sram_rvalid | hwreg_rvalid));
+    // Paginas 0xFF00_20xx (GPIO) e 0xFF00_30xx (SPI) saem do hwreg_iface;
+    // o resto de 0xFF00_xxxx continua no hwreg_iface
+    localparam logic [7:0] GPIO_PAGE = 8'h20;
+    localparam logic [7:0] SPI_PAGE  = 8'h30;
+    logic hwreg_sel, spi_req, gpio_req;
+    assign hwreg_sel = loc_req & (loc_addr[31:16] == 16'hFF00);
+    assign spi_req   = hwreg_sel & (loc_addr[15:8] == SPI_PAGE);
+    assign gpio_req  = hwreg_sel & (loc_addr[15:8] == GPIO_PAGE);
+
+    assign loc_err = loc_rvalid & (~(sram_rvalid | hwreg_rvalid | spi_rvalid | gpio_rvalid));
 
     ram32 #(
         .SIZE      ( RAM_SIZE / 4                                      ),
@@ -268,7 +296,7 @@ module demo_top_ps #(
     ) hwregs (
         .clk_i          ( clk                                       ),
         .rst_ni         ( rst_n                                     ),
-        .req_i          ( loc_req & (loc_addr[31:16] == 16'hFF00)   ),
+        .req_i          ( hwreg_sel & ~spi_req & ~gpio_req          ),
         .we_i           ( loc_we                                    ),
         .addr_i         ( loc_addr[15:0]                            ),
         .wdata_i        ( loc_wdata                                 ),
@@ -276,6 +304,41 @@ module demo_top_ps #(
         .rdata_o        ( hwreg_rdata                               ),
         .rx_i           ( uart_rx_i                                 ),
         .tx_o           ( uart_tx_o                                 )
+    );
+
+    spi_periph #(
+        .N_CS     ( SPI_N_CS        )
+    ) u_spi (
+        .clk_i    ( clk             ),
+        .rst_ni   ( rst_n           ),
+        .req_i    ( spi_req         ),
+        .we_i     ( loc_we          ),
+        .be_i     ( loc_be          ),
+        .addr_i   ( loc_addr[4:0]   ),
+        .wdata_i  ( loc_wdata       ),
+        .rvalid_o ( spi_rvalid      ),
+        .rdata_o  ( spi_rdata       ),
+        .sclk_o   ( spi_sclk_o      ),
+        .mosi_o   ( spi_mosi_o      ),
+        .miso_i   ( spi_miso_i      ),
+        .cs_no    ( spi_cs_no       )
+    );
+
+    gpio_periph #(
+        .N_GPIO     ( N_GPIO          )
+    ) u_gpio (
+        .clk_i      ( clk             ),
+        .rst_ni     ( rst_n           ),
+        .req_i      ( gpio_req        ),
+        .we_i       ( loc_we          ),
+        .be_i       ( loc_be          ),
+        .addr_i     ( loc_addr[4:0]   ),
+        .wdata_i    ( loc_wdata       ),
+        .rvalid_o   ( gpio_rvalid     ),
+        .rdata_o    ( gpio_rdata      ),
+        .gpio_in_i  ( gpio_in_i       ),
+        .gpio_out_o ( gpio_out_o      ),
+        .gpio_oe_o  ( gpio_oe_o       )
     );
 
     // ---------------------------------------------------------------
@@ -354,7 +417,9 @@ module demo_top_ps #(
                         ((state == RD_WAIT) & m_axi_rvalid) |
                         ((state == WR_WAIT) & m_axi_bvalid);
     assign mem_rdata  = (state == RD_WAIT) ? m_axi_rdata :
-                        (hwreg_rvalid ? hwreg_rdata : sram_rdata);
+                        spi_rvalid   ? spi_rdata   :
+                        gpio_rvalid  ? gpio_rdata  :
+                        hwreg_rvalid ? hwreg_rdata : sram_rdata;
     assign mem_err    = (state == RD_WAIT) ? m_axi_rresp[1] :
                         (state == WR_WAIT) ? m_axi_bresp[1] : loc_err;
     assign pop        = ((state == LOC_WAIT) & loc_rvalid) |

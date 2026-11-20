@@ -28,9 +28,9 @@ if {![file readable $ram_file]} {
 set fclk0_mhz   125      ;# precisa ser igual ao parametro FREQ_MHZ do demo_top_ps
 set icache_sz   0        ;# comece sem cache para validar; depois teste 4096
 set dcache_sz   0        ;# idem (ex.: 16384)
-set ddr_v_base  0x10000000   ;# como o Vicuna enxerga a DDR
-set ddr_p_base  0x10000000   ;# onde ela fica fisicamente
-set ddr_size    0x10000000   ;# PYNQ-Z2: DDR de 512 MB (0x0000_0000-0x1FFF_FFFF); aqui os 256 MB de cima
+set ddr_v_base  0x20000000   ;# como o Vicuna enxerga a DDR
+set ddr_p_base  0x00000000   ;# onde ela fica fisicamente
+set ddr_size    0x20000000   ;# PYNQ-Z2: DDR de 512 MB (0x0000_0000-0x1FFF_FFFF); aqui os 256 MB de cima
 
 # Board files da PYNQ-Z2: nao vem no Vivado; instalar pelo Vivado Store (ver abaixo)
 
@@ -85,6 +85,8 @@ lappend src_list "$vproc_dir/demo/rtl/demo_top_ps_wrap.v"
 lappend src_list "$vproc_dir/demo/rtl/ram.sv"
 lappend src_list "$vproc_dir/demo/rtl/uart_rx.sv"
 lappend src_list "$vproc_dir/demo/rtl/uart_tx.sv"
+lappend src_list "$vproc_dir/rtl/spi_periph.sv"
+lappend src_list "$vproc_dir/rtl/gpio_periph.sv"
 lappend src_list "$vproc_dir/rtl/vproc_pkg.sv"
 lappend src_list "$config_file"
 foreach file {
@@ -226,6 +228,21 @@ create_bd_port -dir I uart_rx_i
 create_bd_port -dir O uart_tx_o
 connect_bd_net [get_bd_ports uart_rx_i]     [get_bd_pins vicuna/uart_rx_i]
 connect_bd_net [get_bd_pins vicuna/uart_tx_o] [get_bd_ports uart_tx_o]
+
+# SPI para fora (pinos no pynqz2.xdc)
+create_bd_port -dir O spi_sclk_o
+create_bd_port -dir O spi_mosi_o
+create_bd_port -dir I spi_miso_i
+create_bd_port -dir O -from 1 -to 0 spi_cs_no
+connect_bd_net [get_bd_pins vicuna/spi_sclk_o] [get_bd_ports spi_sclk_o]
+connect_bd_net [get_bd_pins vicuna/spi_mosi_o] [get_bd_ports spi_mosi_o]
+connect_bd_net [get_bd_ports spi_miso_i]       [get_bd_pins vicuna/spi_miso_i]
+connect_bd_net [get_bd_pins vicuna/spi_cs_no]  [get_bd_ports spi_cs_no]
+
+# GPIO para fora como interface gpio_rtl: o make_wrapper gera IOBUFs e a porta
+# gpio_tri_io[N_GPIO-1:0] no top (pinos no pynqz2.xdc)
+create_bd_intf_port -mode Master -vlnv xilinx.com:interface:gpio_rtl:1.0 gpio
+connect_bd_intf_net [get_bd_intf_pins vicuna/gpio] [get_bd_intf_ports gpio]
 
 # Mapa de enderecos (DDR vista pela HP0)
 assign_bd_address

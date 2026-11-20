@@ -15,7 +15,9 @@ module demo_top_ps_wrap #(
     parameter         [31:0] DDR_V_BASE     = 32'h20000000,
     parameter         [31:0] DDR_SIZE       = 32'h20000000,
     parameter         [31:0] DDR_P_BASE     = 32'h00000000,
-    parameter integer        AXI_ID_W       = 1
+    parameter integer        AXI_ID_W       = 1,
+    parameter integer        SPI_N_CS       = 2,
+    parameter integer        N_GPIO         = 8
 ) (
     // Clock/reset de entrada (vem do PS)
     (* X_INTERFACE_INFO = "xilinx.com:signal:clock:1.0 sys_clk_pi CLK" *)
@@ -28,6 +30,20 @@ module demo_top_ps_wrap #(
 
     input  wire                  uart_rx_i,
     output wire                  uart_tx_o,
+
+    output wire                  spi_sclk_o,
+    output wire                  spi_mosi_o,
+    input  wire                  spi_miso_i,
+    output wire [SPI_N_CS-1:0]   spi_cs_no,
+
+    // GPIO como interface gpio_rtl: o make_wrapper do block design insere os IOBUFs
+    // (porta gpio_tri_io no top). TRI_T=1 -> pino em alta impedancia (entrada).
+    (* X_INTERFACE_INFO = "xilinx.com:interface:gpio:1.0 gpio TRI_I" *)
+    input  wire [N_GPIO-1:0]     gpio_tri_i,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:gpio:1.0 gpio TRI_O" *)
+    output wire [N_GPIO-1:0]     gpio_tri_o,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:gpio:1.0 gpio TRI_T" *)
+    output wire [N_GPIO-1:0]     gpio_tri_t,
 
     input  wire                  run_i,
 
@@ -83,6 +99,9 @@ module demo_top_ps_wrap #(
     output wire                  m_axi_rready
 );
 
+    wire [N_GPIO-1:0] gpio_oe;
+    assign gpio_tri_t = ~gpio_oe;
+
     demo_top_ps #(
         .RAM_FPATH      ( RAM_FPATH      ),
         .RAM_SIZE       ( RAM_SIZE       ),
@@ -96,13 +115,22 @@ module demo_top_ps_wrap #(
         .DDR_V_BASE     ( DDR_V_BASE     ),
         .DDR_SIZE       ( DDR_SIZE       ),
         .DDR_P_BASE     ( DDR_P_BASE     ),
-        .AXI_ID_W       ( AXI_ID_W       )
+        .AXI_ID_W       ( AXI_ID_W       ),
+        .SPI_N_CS       ( SPI_N_CS       ),
+        .N_GPIO         ( N_GPIO         )
     ) u_top (
         .sys_clk_pi    ( sys_clk_pi    ),
         .sys_clk_ni    ( sys_clk_ni    ),
         .sys_rst_ni    ( sys_rst_ni    ),
         .uart_rx_i     ( uart_rx_i     ),
         .uart_tx_o     ( uart_tx_o     ),
+        .spi_sclk_o    ( spi_sclk_o    ),
+        .spi_mosi_o    ( spi_mosi_o    ),
+        .spi_miso_i    ( spi_miso_i    ),
+        .spi_cs_no     ( spi_cs_no     ),
+        .gpio_in_i     ( gpio_tri_i    ),
+        .gpio_out_o    ( gpio_tri_o    ),
+        .gpio_oe_o     ( gpio_oe       ),
         .run_i         ( run_i         ),
         .clk_o         ( clk_o         ),
         .rst_no        ( rst_no        ),
